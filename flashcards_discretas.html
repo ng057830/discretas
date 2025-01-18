@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Flashcards Matemáticas Discretas</title>
+    <!-- MathJax (versión 3) -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #F5A623;
+            --background-color: #F8F9FA;
+            --text-color: #333;
+            --card-background: #FFFFFF;
+            --timer-color: #E74C3C;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .welcome-screen {
+            text-align: center;
+            max-width: 600px;
+            padding: 40px;
+            background: var(--card-background);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .flashcard-container {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+
+        .timer {
+            font-size: 24px;
+            color: var(--timer-color);
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .flashcard {
+            perspective: 1000px;
+            width: 100%;
+            /* Reducimos la altura para que sea algo más compacta */
+            height: 350px;
+            position: relative;
+            cursor: not-allowed;
+            margin-bottom: 20px;
+        }
+
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .flashcard.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flashcard-front, .flashcard-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Para que el contenido comience arriba */
+            align-items: center;
+            padding: 20px;
+            background: var(--card-background);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            /* Habilitamos scroll interno si el contenido sobrepasa la altura */
+            overflow-y: auto;
+        }
+
+        .flashcard-back {
+            transform: rotateY(180deg);
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            opacity: 0.6;
+        }
+
+        button.active {
+            opacity: 1;
+            cursor: pointer;
+        }
+
+        button:hover.active {
+            background-color: #357ABD;
+        }
+
+        .progress {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .motivation {
+            margin-top: 20px;
+            color: var(--secondary-color);
+            font-style: italic;
+            text-align: center;
+        }
+
+        /* Disminuimos el tamaño del contenido para que no se desborde */
+        .latex-content {
+            margin: 10px 0;
+            font-size: 1em; /* reducido de 1.2em a 1em */
+            text-align: left;
+            width: 100%; /* Para que tome todo el ancho y el scroll sea vertical si es necesario */
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .flashcard {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-screen" id="welcomeScreen">
+        <h1>¡Bienvenido! 🌟</h1>
+        <p>Repasaremos conceptos clave de Relaciones entre Conjuntos, Aritmética Modular y Álgebra de Boole.</p>
+        <p>Tienes 10 segundos para pensar antes de ver la respuesta en cada flashcard.</p>
+        <button onclick="startFlashcards()">¡Iniciar Flashcards!</button>
+    </div>
+
+    <div class="flashcard-container" id="flashcardContainer">
+        <div class="timer" id="timer">10</div>
+        <div class="flashcard" id="flashcard">
+            <div class="flashcard-inner">
+                <div class="flashcard-front">
+                    <!-- Contenido dinámico (Frente) -->
+                </div>
+                <div class="flashcard-back">
+                    <!-- Contenido dinámico (Reverso) -->
+                </div>
+            </div>
+        </div>
+        <div class="navigation">
+            <button onclick="previousCard()" id="prevButton" style="display: none;">Anterior</button>
+            <button onclick="nextCard()" id="nextButton" style="display: none;">Siguiente</button>
+        </div>
+        <div class="progress">
+            <span id="progressText">Tarjeta 1 de 15</span>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+        <div class="motivation" id="motivation"></div>
+    </div>
+
+    <script>
+        // Datos de las 15 flashcards
+        const flashcards = [
+            // 1) Definición de Relación
+            {
+                front: {
+                    title: "Definición de Relación",
+                    content: "¿Qué es una relación entre dos conjuntos A y B?"
+                },
+                back: {
+                    explanation: "Una relación entre A y B es un subconjunto de su producto cartesiano.",
+                    math: [
+                        "Definición: $$R \\subseteq A \\times B$$",
+                        "Ejemplo: Si $$A = \\{1,2\\}, B = \\{a,b\\}$$, una relación posible es $$R = \\{(1,a),(2,b)\\}$$"
+                    ]
+                }
+            },
+            // 2) Propiedades de una Relación (Reflexiva, Simétrica, Transitiva)
+            {
+                front: {
+                    title: "Propiedades de las Relaciones",
+                    content: "¿Cuáles son reflexiva, simétrica y transitiva?"
+                },
+                back: {
+                    explanation: "Estas propiedades caracterizan distintos tipos de relaciones:",
+                    math: [
+                        "Reflexiva: $$\\forall a \\in A, (a,a) \\in R$$",
+                        "Simétrica: $$\\forall(a,b) \\in R, (b,a) \\in R$$",
+                        "Transitiva: Si $$(a,b)\\in R$$ y $$(b,c)\\in R$$ entonces $$(a,c)\\in R$$"
+                    ]
+                }
+            },
+            // 3) Relación de Equivalencia
+            {
+                front: {
+                    title: "Relación de Equivalencia",
+                    content: "¿Qué condiciones debe cumplir para ser de equivalencia?"
+                },
+                back: {
+                    explanation: "Debe ser reflexiva, simétrica y transitiva.",
+                    math: [
+                        "1. Reflexiva",
+                        "2. Simétrica",
+                        "3. Transitiva",
+                        "Ejemplo: La igualdad es una relación de equivalencia en cualquier conjunto."
+                    ]
+                }
+            },
+            // 4) Función como Relación
+            {
+                front: {
+                    title: "Función como Relación",
+                    content: "¿Cómo se define una función usando el concepto de relación?"
+                },
+                back: {
+                    explanation: "Una función es una relación donde cada elemento de A se relaciona con un único elemento de B.",
+                    math: [
+                        "$$f: A \\to B$$ tal que $$\\forall a\\in A,\\exists\\, b\\in B:(a,b)\\in R$$",
+                        "Ejemplo: $$f(x)= x+1$$ en $$\\mathbb{Z}$$"
+                    ]
+                }
+            },
+            // 5) Producto Cartesiano
+            {
+                front: {
+                    title: "Producto Cartesiano",
+                    content: "¿Qué es $$A \\times B$$?"
+                },
+                back: {
+                    explanation: "El conjunto de todos los pares ordenados con el primero en A y el segundo en B.",
+                    math: [
+                        "$$A \\times B = \\{(a,b)\\mid a\\in A, b\\in B\\}$$",
+                        "Ejemplo: $$\\{1,2\\}\\times\\{a,b\\}=\\{(1,a),(1,b),(2,a),(2,b)\\}$$"
+                    ]
+                }
+            },
+            // 6) Definición de Congruencia (Aritmética Modular)
+            {
+                front: {
+                    title: "Definición de Congruencia",
+                    content: "¿Qué significa $$a \\equiv b \\pmod{n}$$?"
+                },
+                back: {
+                    explanation: "Que a y b dejan el mismo residuo al dividir entre n.",
+                    math: [
+                        "$$a\\equiv b \\pmod{n}\\iff n\\mid(a-b)$$",
+                        "Ejemplo: $$17\\equiv 5 \\pmod{12}$$, pues $$12\\mid(17-5)=12$$"
+                    ]
+                }
+            },
+            // 7) Propiedades de la Congruencia
+            {
+                front: {
+                    title: "Propiedades de la Congruencia",
+                    content: "Menciona dos propiedades fundamentales."
+                },
+                back: {
+                    explanation: "La congruencia modulo n es reflexiva, simétrica y transitiva.",
+                    math: [
+                        "Reflexiva: $$a\\equiv a \\pmod{n}$$",
+                        "Simétrica: si $$a\\equiv b \\pmod{n}$$ entonces $$b\\equiv a \\pmod{n}$$",
+                        "Transitiva: si $$a\\equiv b \\pmod{n}$$ y $$b\\equiv c \\pmod{n}$$ entonces $$a\\equiv c \\pmod{n}$$"
+                    ]
+                }
+            },
+            // 8) Suma en Aritmética Modular
+            {
+                front: {
+                    title: "Suma en Aritmética Modular",
+                    content: "¿Cómo se suman dos congruencias?"
+                },
+                back: {
+                    explanation: "Se suman los números y se mantiene la congruencia con el mismo n.",
+                    math: [
+                        "Si $$a\\equiv b\\pmod{n}$$ y $$c\\equiv d\\pmod{n}$$ entonces $$(a+c)\\equiv (b+d)\\pmod{n}$$",
+                        "Ejemplo: $$7\\equiv 1\\pmod{6}$$ y $$5\\equiv -1\\pmod{6}$$, entonces $$7+5\\equiv 1+(-1)=0\\pmod{6}$$"
+                    ]
+                }
+            },
+            // 9) Multiplicación en Aritmética Modular
+            {
+                front: {
+                    title: "Multiplicación en Aritmética Modular",
+                    content: "¿Cómo se multiplican dos congruencias?"
+                },
+                back: {
+                    explanation: "Se multiplican los términos y se aplica la congruencia al resultado.",
+                    math: [
+                        "Si $$a\\equiv b\\pmod{n}$$ y $$c\\equiv d\\pmod{n}$$ entonces $$ac\\equiv bd\\pmod{n}$$",
+                        "Ejemplo: $$4\\equiv 1\\pmod{3}$$ y $$5\\equiv 2\\pmod{3}$$, entonces $$4\\cdot5\\equiv 1\\cdot2=2\\pmod{3}$$"
+                    ]
+                }
+            },
+            // 10) Inverso Multiplicativo
+            {
+                front: {
+                    title: "Inverso Multiplicativo",
+                    content: "¿Qué es el inverso multiplicativo de a mod n?"
+                },
+                back: {
+                    explanation: "Es un número b tal que $$ab\\equiv 1\\pmod{n}$$.",
+                    math: [
+                        "Ejemplo: el inverso de 3 mod 11 es 4, pues $$3\\cdot4=12\\equiv1\\pmod{11}$$"
+                    ]
+                }
+            },
+            // 11) Álgebra de Boole: Definición
+            {
+                front: {
+                    title: "Álgebra de Boole",
+                    content: "¿En qué consiste el Álgebra de Boole?"
+                },
+                back: {
+                    explanation: "Es la estructura que modela las operaciones lógicas (AND, OR, NOT).",
+                    math: [
+                        "Operaciones: AND ($$\\cdot$$), OR ($$+$$), NOT ($$\\overline{a}$$)",
+                        "Se usan para describir funciones lógicas y circuitos digitales."
+                    ]
+                }
+            },
+            // 12) Leyes Fundamentales
+            {
+                front: {
+                    title: "Leyes Fundamentales",
+                    content: "Menciona dos leyes del Álgebra de Boole."
+                },
+                back: {
+                    explanation: "Permiten simplificar expresiones lógicas.",
+                    math: [
+                        "Idempotencia: $$a+a=a,\\; a\\cdot a=a$$",
+                        "Identidad: $$a+0=a,\\; a\\cdot1=a$$"
+                    ]
+                }
+            },
+            // 13) Leyes de De Morgan
+            {
+                front: {
+                    title: "Leyes de De Morgan",
+                    content: "¿Qué establecen las Leyes de De Morgan?"
+                },
+                back: {
+                    explanation: "Relacionan las operaciones OR y AND con la negación.",
+                    math: [
+                        "$$\\overline{a+b} = \\overline{a}\\cdot\\overline{b}$$",
+                        "$$\\overline{a\\cdot b} = \\overline{a}+\\overline{b}$$"
+                    ]
+                }
+            },
+            // 14) Tabla de Verdad
+            {
+                front: {
+                    title: "Tabla de Verdad",
+                    content: "¿Para qué se utiliza la tabla de verdad?"
+                },
+                back: {
+                    explanation: "Muestra todas las salidas de una función booleana para todas sus combinaciones de entrada.",
+                    math: [
+                        "Ejemplo (OR):",
+                        "$$\\begin{array}{c|c|c} a & b & a+b\\\\\\hline 0 & 0 & 0 \\\\ 0 & 1 & 1\\\\ 1 & 0 & 1\\\\ 1 & 1 & 1 \\end{array}$$"
+                    ]
+                }
+            },
+            // 15) Simplificación de Expresiones
+            {
+                front: {
+                    title: "Simplificación Booleana",
+                    content: "¿Cómo se simplifica $$a\\cdot b + a\\cdot\\overline{b}$$?"
+                },
+                back: {
+                    explanation: "Aplicando la Distributiva: factor común a.",
+                    math: [
+                        "$$a\\cdot b + a\\cdot\\overline{b} = a\\cdot (b+\\overline{b})=a\\cdot1=a$$"
+                    ]
+                }
+            }
+        ];
+
+        let currentCard = 0;
+        let isFlipped = false;
+        let timer;
+        let timeLeft = 1; // 10 segundos
+        let canFlip = false;
+
+        // Inicia la sesión de flashcards
+        function startFlashcards() {
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('flashcardContainer').style.display = 'block';
+            document.getElementById('progressText').textContent = `Tarjeta 1 de ${flashcards.length}`;
+            document.getElementById('progressFill').style.width = '0%';
+            displayCard(currentCard);
+            startTimer();
+        }
+
+        // Manejo del temporizador
+        function startTimer() {
+            timeLeft = 1;
+            canFlip = false;
+            isFlipped = false; // Restablecer el estado de volteo
+            document.getElementById('timer').textContent = `Tiempo restante: ${timeLeft}s`;
+            document.getElementById('flashcard').style.cursor = 'not-allowed';
+            document.getElementById('prevButton').style.display = 'none';
+            document.getElementById('nextButton').style.display = 'none';
+
+            if (timer) clearInterval(timer);
+
+            timer = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    document.getElementById('timer').textContent = `Tiempo restante: ${timeLeft}s`;
+                } else {
+                    clearInterval(timer);
+                    canFlip = true;
+                    document.getElementById('flashcard').style.cursor = 'pointer';
+                    document.getElementById('timer').textContent = `¡Puedes girar la tarjeta!`;
+                }
+            }, 1000);
+        }
+
+        // Muestra la tarjeta correspondiente
+        function displayCard(index) {
+            const card = flashcards[index];
+            const front = document.querySelector('.flashcard-front');
+            const back = document.querySelector('.flashcard-back');
+
+            // Contenido del frente
+            front.innerHTML = `
+                <h2>${card.front.title}</h2>
+                <p>${card.front.content}</p>
+            `;
+
+            // Contenido del reverso
+            back.innerHTML = `
+                <h2>Explicación</h2>
+                <div class="latex-content">
+                    ${card.back.explanation}
+                </div>
+                ${
+                    card.back.math.map(item => `
+                    <div class="latex-content">
+                        ${item}
+                    </div>
+                `).join('')
+                }
+            `;
+
+            // Restablecer el estado de la tarjeta
+            const flashcard = document.getElementById('flashcard');
+            flashcard.classList.remove('flipped');
+            isFlipped = false;
+
+            // Actualizar progreso
+            document.getElementById('progressText').textContent = `Tarjeta ${index + 1} de ${flashcards.length}`;
+            const progressPercentage = ((index)/(flashcards.length - 1)) * 100;
+            document.getElementById('progressFill').style.width = `${progressPercentage}%`;
+
+            // Limpiar motivación
+            document.getElementById('motivation').textContent = "";
+
+            // Forzar el renderizado de MathJax en la tarjeta actual
+            MathJax.typesetPromise().then(() => {
+                // Render completo
+            });
+        }
+
+        // Voltea la tarjeta al hacer clic (solo tras 10s)
+        function flipCard() {
+            if (canFlip) {
+                const flashcard = document.getElementById('flashcard');
+                flashcard.classList.toggle('flipped');
+                isFlipped = !isFlipped;
+
+                if (isFlipped) {
+                    document.getElementById('motivation').textContent = "¡Excelente! Continúa aprendiendo.";
+                    // Mostrar los botones de navegación
+                    document.getElementById('prevButton').style.display = 'inline-block';
+                    document.getElementById('nextButton').style.display = 'inline-block';
+
+                    // Deshabilitar botones si es necesario
+                    document.getElementById('prevButton').disabled = (currentCard === 0);
+                    document.getElementById('nextButton').disabled = (currentCard === flashcards.length - 1);
+                } else {
+                    document.getElementById('motivation').textContent = "";
+                    // Ocultar navegación
+                    document.getElementById('prevButton').style.display = 'none';
+                    document.getElementById('nextButton').style.display = 'none';
+                }
+            }
+        }
+
+        // Funciones para avanzar y retroceder tarjetas
+        function nextCard() {
+            if (currentCard < flashcards.length - 1) {
+                currentCard++;
+                displayCard(currentCard);
+                startTimer();
+            }
+        }
+
+        function previousCard() {
+            if (currentCard > 0) {
+                currentCard--;
+                displayCard(currentCard);
+                startTimer();
+            }
+        }
+
+        // Evento para voltear la tarjeta al hacer clic
+        document.getElementById('flashcard').addEventListener('click', flipCard);
+    </script>
+</body>
+</html>
